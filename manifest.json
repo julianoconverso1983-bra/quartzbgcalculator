@@ -1,5 +1,5 @@
 {
-  "name": "Quartz - Calculadora da Mina",
+  "name": "Quartz - Calculadora",
   "short_name": "Quartz Calc",
   "description": "Somador e calculadora de pontos para o jogo de tabuleiro Quartz",
   "start_url": "./index.html",
@@ -20,5 +20,12 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "dir": "auto",
+  "lang": "pt",
+  "categories": [
+    "entertainment",
+    "games",
+    "utilities"
   ]
 }
