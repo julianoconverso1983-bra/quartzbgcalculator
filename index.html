@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quartz - Somador Oficial da Mina</title>
+    <!-- PWA Meta Tags & Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#0b0f19">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Quartz Calc">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        dwarf: ['Cinzel', 'serif'],
+                    },
+                    colors: {
+                        mine: {
+                            900: '#0b0f19',
+                            800: '#151c2e',
+                            700: '#1e293b',
+                            gold: '#fbbf24',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Impede o gesto de "puxar para atualizar" em navegadores Android compatíveis. */
+        html, body {
+            overscroll-behavior-y: none;
+            overscroll-behavior: none;
+        }
+
+        body {
+            background: radial-gradient(circle at top center, #1e1b4b 0%, #0f172a 60%, #090d16 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(21, 28, 46, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, opacity 0.3s ease;
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.35);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-gold:hover {
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.6);
+            transform: translateY(-2px) scale(1.01);
+        }
+        .btn-gold:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .calc-btn {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            font-weight: 800;
+            transition: all 0.15s ease;
+            user-select: none;
+            cursor: pointer;
+        }
+        .calc-btn:hover {
+            background: rgba(51, 65, 85, 0.9);
+            border-color: rgba(251, 191, 36, 0.5);
+            transform: translateY(-1px);
+        }
+        .calc-btn:active {
+            transform: translateY(1px);
+            background: rgba(245, 158, 11, 0.2);
+        }
+
+        .calc-btn-target {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        .calc-btn-target.active {
+            border-color: #fbbf24;
+            background: rgba(245, 158, 11, 0.25);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .animate-scale-in {
+            animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeOutDown {
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to { opacity: 0; transform: translateY(20px) scale(0.95); }
+        }
+
+        .animate-fade-out-down {
+            animation: fadeOutDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .mine-title {
+            font-family: 'Cinzel', serif;
+            letter-spacing: 0.12em;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8), 0 0 20px rgba(245, 158, 11, 0.3);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased flex flex-col justify-between min-h-screen p-3 sm:p-6">
+
+    <!-- Header -->
+    <header class="text-center my-3 sm:my-5">
+        <div class="inline-flex items-center gap-3 bg-slate-900/90 px-6 py-3 rounded-2xl border border-amber-500/30 shadow-2xl backdrop-blur-md transition-all duration-300 hover:border-amber-500/50">
+            <svg class="w-8 h-8 text-amber-400 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 8h-2V5c0-1.1-.9-2-2-2H9c-1.1 0-2 .9-2 2v3H5c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-6c0-1.1-.9-2-2-2zm-8-3h2v3h-2V5zm-6 7h14v4H5v-4z"/>
+                <circle cx="7" cy="19" r="2"/>
+                <circle cx="17" cy="19" r="2"/>
+            </svg>
+            <div>
+                <h1 class="mine-title text-2xl sm:text-3xl font-black text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                    QUARTZ
+                </h1>
+            </div>
+        </div>
+    </header>
+
+    <!-- Modal de Alerta/Info -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-opacity duration-300">
+        <div class="glass-panel p-6 rounded-2xl max-w-sm w-full text-center space-y-4 animate-scale-in">
+            <i id="modal-icon" class="fa-solid fa-circle-info text-3xl text-amber-400"></i>
+            <h3 id="modal-title" class="mine-title text-lg font-bold text-amber-300">Aviso</h3>
+            <p id="modal-message" class="text-sm text-slate-300"></p>
+            <button onclick="closeModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-400 font-bold border border-amber-500/30 transition-all">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <!-- Banner de Transição de Dia (Aviso de Novo Dia - 3 Segundos) -->
+    <div id="day-transition-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-md w-full text-center space-y-5 animate-scale-in border-amber-500/50 shadow-2xl">
+            <div class="w-20 h-20 bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto border border-amber-500/40 shadow-inner">
+                <i class="fa-solid fa-sun text-amber-400 text-4xl animate-spin-slow"></i>
+            </div>
+            <div>
+                <h2 id="transition-day-title" class="mine-title text-3xl font-black text-amber-400 uppercase">Dia 2</h2>
+            </div>
+            <div class="flex items-center justify-center gap-2 text-xs text-amber-300/70 font-dwarf font-bold pt-2">
+                <i class="fa-solid fa-circle-notch fa-spin text-amber-400"></i> Preparando ferramentas...
+            </div>
+        </div>
+    </div>
+
+    <!-- Tela Inicial: Seleção de Número de Jogadores -->
+    <main id="setup-container" class="max-w-md w-full mx-auto my-auto glass-panel rounded-3xl p-6 sm:p-8 text-center animate-fade-in">
+        <div class="w-20 h-20 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-amber-500/30 shadow-inner">
+            <i class="fa-solid fa-users text-amber-400 text-4xl"></i>
+        </div>
+        <h2 class="mine-title text-2xl font-bold text-white mb-6">Entrar na Mina</h2>
+
+        <!-- Formulário Local -->
+        <div class="space-y-6">
+            <div>
+                <label for="num-players" class="block text-xs uppercase tracking-wider text-amber-300/80 mb-3 font-bold">
+                    Número de Jogadores (3 a 5)
+                </label>
+                <div class="flex items-center justify-center gap-4 mb-5">
+                    <button type="button" onclick="adjustPlayers(-1)" class="w-12 h-12 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-90 border border-amber-500/30 text-amber-400 font-bold text-xl flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-minus"></i>
+                    </button>
+                    <input type="number" id="num-players" min="3" max="5" value="3" readonly class="w-20 h-12 bg-slate-900 border border-amber-500/50 rounded-xl text-center text-2xl font-bold text-amber-300 focus:outline-none">
+                    <button type="button" onclick="adjustPlayers(1)" class="w-12 h-12 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-90 border border-amber-500/30 text-amber-400 font-bold text-xl flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+
+                <!-- Nomes dos Jogadores -->
+                <div id="player-names-container" class="space-y-3 text-left">
+                    <!-- Gerado Dinamicamente -->
+                </div>
+            </div>
+
+            <button onclick="iniciarJornadaLocal()" class="w-full py-4 rounded-xl font-bold text-slate-950 btn-gold text-lg flex items-center justify-center gap-2 font-dwarf uppercase">
+                <i class="fa-solid fa-pickaxe text-slate-950"></i> Iniciar Partida
+            </button>
+        </div>
+    </main>
+
+    <!-- Conteúdo Principal da Calculadora -->
+    <main id="main-content" class="max-w-xl w-full mx-auto hidden flex-col gap-4 animate-fade-in">
+        
+        <!-- Abas de Navegação por Jogador -->
+        <div id="player-tabs-container" class="flex flex-wrap justify-center gap-2">
+            <!-- Gerado dinamicamente -->
+        </div>
+
+        <!-- Card do Jogador Atual & Teclado Interativo -->
+        <div class="calculator-wrapper">
+            <!-- Card do jogador ativo e calculadora integrados pelo JS -->
+        </div>
+
+        <!-- Tabela de Histórico de Vendas -->
+        <section class="glass-panel rounded-3xl p-6 shadow-2xl transition-all" id="history-section">
+            <div class="flex items-center justify-between mb-6 border-b border-slate-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30">
+                        <i class="fa-solid fa-coins text-lg"></i>
+                    </span>
+                    <div>
+                        <h2 id="history-title" class="mine-title text-xl font-bold text-amber-400">Venda de Cristais ($)</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div id="history-content" class="overflow-x-auto">
+                <table id="history-table" class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-amber-300/80 text-xs uppercase tracking-wider font-dwarf">
+                            <!-- Headers JS -->
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 text-sm">
+                        <!-- Rows JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="text-center text-xs text-slate-500 my-4">
+        Quartz Board Game Somador • Regras oficiais de Sergio Halaban & André Zatz
+    </footer>
+
+    <!-- Script Regras do Jogo + Calculadora Interativa -->
+    <script>
+        let diaAtual = 1;
+        const totalDias = 5;
+        let jogadores = []; 
+        let currentTargetId = null;
+        let jogadorAtivoId = null;
+        let processandoFinalizacaoDia = false;
+
+        /*
+         * Proteção adicional contra o gesto de atualizar a página no Android:
+         * se a página estiver no topo e o usuário arrastar o dedo para baixo,
+         * cancelamos somente esse gesto vertical. A rolagem normal continua
+         * funcionando quando há conteúdo acima/abaixo.
+         */
+        (function bloquearPullToRefresh() {
+            let toqueInicialY = 0;
+
+            document.addEventListener('touchstart', function(event) {
+                if (event.touches.length === 1) {
+                    toqueInicialY = event.touches[0].clientY;
+                }
+            }, { passive: true });
+
+            document.addEventListener('touchmove', function(event) {
+                if (event.touches.length !== 1) return;
+
+                const deslocamentoY = event.touches[0].clientY - toqueInicialY;
+                const estaNoTopo = window.scrollY <= 0;
+
+                // Arrasto para baixo no topo da página: bloqueia a atualização.
+                if (estaNoTopo && deslocamentoY > 0) {
+                    event.preventDefault();
+                }
+            }, { passive: false });
+        })();
+
+        const playerPalettes = [
+            { bg: 'rgba(69, 10, 10, 0.75)', border: 'rgba(239, 68, 68, 0.35)', badgeBg: 'bg-red-500/20', text: 'text-red-350', accent: '#ef4444' },
+            { bg: 'rgba(15, 23, 42, 0.85)', border: 'rgba(59, 130, 246, 0.35)', badgeBg: 'bg-blue-500/20', text: 'text-blue-350', accent: '#3b82f6' },
+            { bg: 'rgba(41, 37, 36, 0.75)', border: 'rgba(234, 179, 8, 0.35)', badgeBg: 'bg-amber-500/20', text: 'text-amber-350', accent: '#eab308' },
+            { bg: 'rgba(6, 78, 59, 0.65)', border: 'rgba(16, 185, 129, 0.35)', badgeBg: 'bg-emerald-500/20', text: 'text-emerald-350', accent: '#10b981' },
+            { bg: 'rgba(59, 7, 100, 0.75)', border: 'rgba(168, 85, 247, 0.35)', badgeBg: 'bg-purple-500/20', text: 'text-purple-350', accent: '#a855f7' }
+        ];
+
+        const cristais = [
+            { id: 'quartzo', valor: 1, max: 15, nome: 'Quartzo', svg: `<svg class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L6 8v8l6 6 6-6V8l-6-6zm0 3.2L15.8 9 12 19.8 8.2 9 12 5.2z"/></svg>` },
+            { id: 'rubelita', valor: 2, max: 12, nome: 'Rubelita', svg: `<svg class="w-4 h-4 text-pink-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L4 9l8 13 8-13-8-7zm0 3.5L16.5 9 12 18.5 7.5 9 12 5.5z"/></svg>` },
+            { id: 'esmeralda', valor: 3, max: 10, nome: 'Esmeralda', svg: `<svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10l5 6-10 14L2 8l4-5zm1.2 2L4.8 8h14.4l-3.4-4H8.2z"/></svg>` },
+            { id: 'safira', valor: 4, max: 7, nome: 'Safira', svg: `<svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 12l10 10 10-10L12 2zm0 3.8L18.2 12 12 18.2 5.8 12 12 5.8z"/></svg>` },
+            { id: 'rubi', valor: 6, max: 4, nome: 'Rubi', svg: `<svg class="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 5-10 14L2 8l4-5zm1.5 2L4.5 8h15l-3-3h-9z"/></svg>` },
+            { id: 'ambar', valor: 8, max: 2, nome: 'Âmbar', svg: `<svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 6a6 6 0 0 1 6 6h-6V6z" fill="rgba(0,0,0,0.2)"/></svg>` }
+        ];
+
+        window.calcularBravuraAutomatica = function(ordemSaida, totalJogadores) {
+            if (!ordemSaida) return 0;
+            if (totalJogadores === 5) {
+                if (ordemSaida === 3) return 1;
+                if (ordemSaida === 4) return 2;
+                if (ordemSaida === 5) return 3;
+            } else if (totalJogadores === 4) {
+                if (ordemSaida === 3) return 1;
+                if (ordemSaida === 4) return 2;
+            } else if (totalJogadores === 3) {
+                if (ordemSaida === 3) return 1;
+            }
+            return 0;
+        };
+
+        window.showModal = function(title, message, iconClass = "fa-circle-info") {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('modal-icon').className = `fa-solid ${iconClass} text-3xl text-amber-400`;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        };
+
+        window.closeModal = function() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        };
+
+        window.renderNameInputs = function() {
+            const numEl = document.getElementById('num-players');
+            if (!numEl) return;
+            const count = parseInt(numEl.value);
+            const container = document.getElementById('player-names-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            for (let i = 1; i <= count; i++) {
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-2 animate-fade-in';
+                div.style.animationDelay = `${i * 0.05}s`;
+                div.innerHTML = `
+                    <span class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 font-extrabold text-sm flex items-center justify-center border border-amber-500/30 font-dwarf">${i}</span>
+                    <input type="text" id="player-name-input-${i}" placeholder="Nome do Jogador ${i}" value="Jogador ${i}" class="w-full bg-slate-900 border border-slate-700 focus:border-amber-500/50 rounded-xl px-3 py-2 text-sm text-white focus:outline-none font-semibold transition-all">
+                `;
+                container.appendChild(div);
+            }
+        };
+
+        window.adjustPlayers = function(delta) {
+            const input = document.getElementById('num-players');
+            if (!input) return;
+            let val = parseInt(input.value) + delta;
+            if (val >= 3 && val <= 5) {
+                input.value = val;
+                window.renderNameInputs();
+            }
+        };
+
+        window.iniciarJornadaLocal = function() {
+            const numEl = document.getElementById('num-players');
+            if (!numEl) return;
+            const numPlayers = parseInt(numEl.value);
+            jogadores = [];
+            processandoFinalizacaoDia = false;
+            
+            for (let i = 1; i <= numPlayers; i++) {
+                const nameInput = document.getElementById(`player-name-input-${i}`);
+                const nomeCustomizado = nameInput && nameInput.value.trim() ? nameInput.value.trim() : `Jogador ${i}`;
+                
+                jogadores.push({
+                    id: `p${i}`,
+                    nome: nomeCustomizado,
+                    paletteIndex: i - 1,
+                    historicoPontos: [],
+                    historicoBravura: [],
+                    totalFinal: 0,
+                    fichaExpSelecionada: false,
+                    quantidades: { quartzo: 0, rubelita: 0, esmeralda: 0, safira: 0, rubi: 0, ambar: 0 },
+                    cartasValores: { b2: 0, b3: 0, b4: 0 },
+                    dinheiroCartasDia5: 0,
+                    ordemSaidaPorDia: {}
+                });
+            }
+
+            diaAtual = 1;
+            document.getElementById('setup-container').classList.add('hidden');
+            const mainContent = document.getElementById('main-content');
+            mainContent.classList.remove('hidden');
+            mainContent.classList.add('flex');
+
+            const primeiro = jogadores[0];
+            jogadorAtivoId = primeiro ? primeiro.id : null;
+
+            window.renderizarAbasJogadores();
+            window.renderizarCardJogador(jogadorAtivoId);
+            window.atualizarTabelaHistorico();
+        };
+
+        window.zerarCalculadoraJogador = function(jog) {
+            jog.quantidades = { quartzo: 0, rubelita: 0, esmeralda: 0, safira: 0, rubi: 0, ambar: 0 };
+            jog.fichaExpSelecionada = false;
+            jog.cartasValores = { b2: 0, b3: 0, b4: 0 };
+        };
+
+        window.exibirAvisoNovoDia = function(novoDia, nomePrimeiroJogador, callback) {
+            const modal = document.getElementById('day-transition-modal');
+            const titleEl = document.getElementById('transition-day-title');
+
+            if (!modal || !titleEl) {
+                callback();
+                return;
+            }
+
+            titleEl.textContent = `Dia ${novoDia} de ${totalDias}`;
+
+            modal.classList.remove('hidden');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                callback();
+            }, 3000);
+        };
+
+        window.renderizarAbasJogadores = function() {
+            const container = document.getElementById('player-tabs-container');
+            if (!container) return;
+
+            container.innerHTML = jogadores.map((j) => {
+                const jaFinalizou = j.historicoPontos && j.historicoPontos[diaAtual - 1] !== undefined;
+                const isActive = j.id === jogadorAtivoId;
+                const palette = playerPalettes[j.paletteIndex % playerPalettes.length];
+
+                let tabClasses = 'bg-slate-900/80 text-slate-300 border-slate-700/80 hover:border-amber-500/50';
+                if (isActive) {
+                    tabClasses = `shadow-lg scale-105 font-bold text-white border-2`;
+                } else if (jaFinalizou) {
+                    tabClasses = 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30';
+                }
+
+                let styleAttr = isActive ? `background-color: ${palette.bg.replace('0.75', '0.9')}; border-color: ${palette.accent};` : '';
+
+                return `
+                    <button type="button" onclick="mudarJogadorAtivo('${j.id}')" style="${styleAttr}" class="px-3.5 py-2 rounded-xl border text-xs flex items-center gap-2 transition-all cursor-pointer ${tabClasses}">
+                        <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${palette.accent};"></span>
+                        <span class="truncate max-w-[100px]">${j.nome}</span>
+                        ${jaFinalizou ? '<i class="fa-solid fa-check text-emerald-400 text-[10px]"></i>' : '<i class="fa-solid fa-pickaxe text-amber-400 text-[10px]"></i>'}
+                    </button>
+                `;
+            }).join('');
+        };
+
+        window.mudarJogadorAtivo = function(id) {
+            jogadorAtivoId = id;
+            window.renderizarAbasJogadores();
+            window.renderizarCardJogador(id);
+        };
+
+        window.handleItemClick = function(playerId, itemId) {
+            const jog = jogadores.find(j => j.id === playerId);
+            if (!jog) return;
+
+            if (jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) return;
+
+            if (itemId === 'exp') {
+                return; 
+            }
+
+            currentTargetId = itemId;
+            document.querySelectorAll('.calc-btn-target').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`btn-target-${itemId}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const cristal = cristais.find(c => c.id === itemId);
+
+            if (cristal) {
+                const valorAtual = jog.quantidades[itemId] || 0;
+                if (valorAtual >= cristal.max) {
+                    window.showModal("Limite Atingido", `O limite máximo do manual para o cristal ${cristal.nome} é de ${cristal.max} unidades!`, "fa-triangle-exclamation");
+                    return;
+                }
+                jog.quantidades[itemId] = valorAtual + 1;
+            } else if (itemId === 'b2' || itemId === 'b3' || itemId === 'b4') {
+                jog.cartasValores[itemId] = (jog.cartasValores[itemId] || 0) + 1;
+            }
+
+            const badgeCountEl = document.getElementById(`count-badge-${itemId}`);
+            if (badgeCountEl) {
+                if (itemId === 'b2' || itemId === 'b3' || itemId === 'b4') badgeCountEl.textContent = jog.cartasValores[itemId];
+                else badgeCountEl.textContent = jog.quantidades[itemId];
+            }
+
+            window.calcularTotal(playerId);
+        };
+
+        window.handleExpCheckbox = function(playerId, checkbox) {
+            const jog = jogadores.find(j => j.id === playerId);
+            if (!jog) return;
+            if (jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) {
+                checkbox.checked = jog.fichaExpSelecionada;
+                return;
+            }
+            jog.fichaExpSelecionada = checkbox.checked;
+            window.calcularTotal(playerId);
+        };
+
+        window.pressNumpadKey = function(playerId, action) {
+            const jog = jogadores.find(j => j.id === playerId);
+            if (!jog || !currentTargetId) return;
+            if (jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) return;
+
+            let currentValue = 0;
+            if (currentTargetId === 'b2' || currentTargetId === 'b3' || currentTargetId === 'b4') currentValue = jog.cartasValores[currentTargetId];
+            else currentValue = jog.quantidades[currentTargetId] || 0;
+
+            if (action === 'clear') currentValue = 0;
+            else if (action === 'minus1') currentValue = Math.max(0, currentValue - 1);
+
+            if (currentTargetId === 'b2' || currentTargetId === 'b3' || currentTargetId === 'b4') jog.cartasValores[currentTargetId] = currentValue;
+            else jog.quantidades[currentTargetId] = currentValue;
+
+            const badgeCountEl = document.getElementById(`count-badge-${currentTargetId}`);
+            if (badgeCountEl) badgeCountEl.textContent = currentValue;
+
+            window.calcularTotal(playerId);
+        };
+
+        window.renderizarCardJogador = function(id) {
+            const wrapper = document.querySelector('.calculator-wrapper');
+            if (!wrapper) return;
+
+            const jogadorAtual = jogadores.find(j => j.id === id);
+            if (!jogadorAtual) return;
+
+            currentTargetId = null;
+            const index = jogadores.findIndex(j => j.id === jogadorAtual.id);
+            const palette = playerPalettes[jogadorAtual.paletteIndex % playerPalettes.length];
+
+            wrapper.innerHTML = '';
+            const card = document.createElement('div');
+            card.className = `glass-panel rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden animate-fade-in`;
+            card.style.background = palette.bg;
+            card.style.borderColor = palette.border;
+            card.id = `player-card-${jogadorAtual.id}`;
+            
+            const jaFinalizouDia = jogadorAtual.historicoPontos && jogadorAtual.historicoPontos[diaAtual - 1] !== undefined;
+
+            card.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center font-black text-slate-950 text-xl shadow font-dwarf" style="background: ${palette.accent};">
+                                ${index + 1}
+                            </div>
+                            <div>
+                                <span class="text-[10px] uppercase font-extrabold text-amber-300/80 tracking-wider font-dwarf block">Calculadora do Jogador</span>
+                                <h3 class="font-bold text-white text-lg flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${palette.accent};"></span>
+                                    ${jogadorAtual.nome}
+                                </h3>
+                            </div>
+                        </div>
+
+                        <!-- Informações do Dia integradas com fonte maior -->
+                        <div class="flex items-center gap-3 bg-slate-900/90 px-3.5 py-2.5 rounded-xl border border-amber-500/30 shadow-inner">
+                            <span class="w-9 h-9 bg-amber-500/20 text-amber-400 rounded-lg flex items-center justify-center border border-amber-500/30">
+                                <i class="fa-solid fa-sun text-base"></i>
+                            </span>
+                            <div class="text-right">
+                                <h4 class="mine-title text-sm sm:text-base font-black text-amber-400 uppercase tracking-widest leading-tight">Dia ${diaAtual} de ${totalDias}</h4>
+                                <span class="text-[10px] ${jaFinalizouDia ? 'text-emerald-400' : 'text-amber-300/80'} font-semibold block">${jaFinalizouDia ? 'Fora da Mina (Concluído)' : 'Em andamento'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DISPLAY VIRTUAL DA CALCULADORA -->
+                    <div class="bg-slate-950/90 rounded-2xl p-4 border border-amber-500/40 shadow-inner relative overflow-hidden space-y-1">
+                        <div class="flex justify-between items-center text-[10px] text-amber-300/70 font-dwarf uppercase tracking-wider">
+                            <span>Selecionado</span>
+                            <span id="display-target-name-${jogadorAtual.id}">Nenhum</span>
+                        </div>
+
+                        <div id="display-cristais-lista-${jogadorAtual.id}" class="text-xs sm:text-sm font-semibold text-slate-200 truncate">
+                            Nenhum cristal no carrinho
+                        </div>
+
+                        <div id="display-bonus-linha-${jogadorAtual.id}" class="text-xs font-bold text-emerald-400 min-h-[1.2rem] truncate">
+                            Nenhum bônus
+                        </div>
+
+                        <div class="text-3xl sm:text-4xl font-black text-amber-400 font-dwarf tracking-widest text-right pt-1 border-t border-slate-800/80">
+                            $<span id="resultado-${jogadorAtual.id}">0</span>
+                        </div>
+                    </div>
+
+                    <!-- TECLADO NUMÉRICO E BOTÕES DE ITENS -->
+                    <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 space-y-2 ${jaFinalizouDia ? 'opacity-50 pointer-events-none' : ''}">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-dwarf">${jaFinalizouDia ? '⚠️ Jogador já saiu da mina neste dia' : 'Clique no item para somar +1:'}</span>
+                        
+                        <!-- Seletor de alvos (Cristais com max limite) -->
+                        <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                            ${cristais.map(c => `
+                                <button type="button" id="btn-target-${c.id}" onclick="handleItemClick('${jogadorAtual.id}', '${c.id}')" class="calc-btn calc-btn-target py-2 px-1 rounded-xl text-xs flex flex-col items-center justify-center gap-0.5">
+                                    <div class="flex items-center gap-1">
+                                        ${c.svg}
+                                        <span class="text-[10px] truncate">${c.nome}</span>
+                                    </div>
+                                    <span id="count-badge-${c.id}" class="text-[11px] font-extrabold text-amber-300 bg-slate-950/60 px-1.5 py-0.5 rounded-md w-full text-center">${jogadorAtual.quantidades[c.id] || 0}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+
+                        <!-- Checkbox Exp (Visível Apenas no Dia 5) -->
+                        <div class="pt-1 ${diaAtual === 5 ? '' : 'hidden'}">
+                            <div class="calc-btn calc-btn-target py-2 px-3 rounded-xl text-[11px] flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold text-amber-300"><i class="fa-solid fa-award text-amber-400 text-xs"></i> Ficha Exp ($3)</span>
+                                <input type="checkbox" id="checkbox-exp-${jogadorAtual.id}" onchange="handleExpCheckbox('${jogadorAtual.id}', this)" ${jogadorAtual.fichaExpSelecionada ? 'checked' : ''} class="w-4 h-4 accent-amber-500 cursor-pointer rounded">
+                            </div>
+                        </div>
+
+                        <!-- Venda das Cartas de Ação (Apenas no Dia 5) -->
+                        <div id="section-cartas-acao" class="pt-2 space-y-1 ${diaAtual === 5 ? '' : 'hidden'}">
+                            <span class="text-[10px] font-bold text-amber-300/80 uppercase tracking-wider block font-dwarf">Venda das Cartas de Ação</span>
+                            <div class="grid grid-cols-3 gap-1.5">
+                                <button type="button" id="btn-target-b2" onclick="handleItemClick('${jogadorAtual.id}', 'b2')" class="calc-btn calc-btn-target py-2 px-1 rounded-xl text-[11px] flex flex-col items-center justify-center gap-0.5 bg-blue-600/20 border-blue-500/40 text-blue-200">
+                                    <span class="flex items-center gap-1"><i class="fa-solid fa-scroll text-blue-400 text-xs"></i> Ataque ($2)</span>
+                                    <span id="count-badge-b2" class="text-[11px] font-extrabold text-blue-300 bg-slate-950/60 px-1.5 py-0.5 rounded-md w-full text-center">${jogadorAtual.cartasValores.b2 || 0}</span>
+                                </button>
+                                <button type="button" id="btn-target-b3" onclick="handleItemClick('${jogadorAtual.id}', 'b3')" class="calc-btn calc-btn-target py-2 px-1 rounded-xl text-[11px] flex flex-col items-center justify-center gap-0.5 bg-blue-600/20 border-blue-500/40 text-blue-200">
+                                    <span class="flex items-center gap-1"><i class="fa-solid fa-scroll text-blue-400 text-xs"></i> Ataque ($3)</span>
+                                    <span id="count-badge-b3" class="text-[11px] font-extrabold text-blue-300 bg-slate-950/60 px-1.5 py-0.5 rounded-md w-full text-center">${jogadorAtual.cartasValores.b3 || 0}</span>
+                                </button>
+                                <button type="button" id="btn-target-b4" onclick="handleItemClick('${jogadorAtual.id}', 'b4')" class="calc-btn calc-btn-target py-2 px-1 rounded-xl text-[11px] flex flex-col items-center justify-center gap-0.5 bg-purple-600/30 border-purple-500/50 text-purple-200">
+                                    <span class="flex items-center gap-1"><i class="fa-solid fa-scroll text-purple-400 text-xs"></i> Defesa ($4)</span>
+                                    <span id="count-badge-b4" class="text-[11px] font-extrabold text-purple-300 bg-slate-950/60 px-1.5 py-0.5 rounded-md w-full text-center">${jogadorAtual.cartasValores.b4 || 0}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Botões de Controle (Zerar C à esquerda e -1 à direita) -->
+                        <div class="grid grid-cols-2 gap-1.5 pt-2 border-t border-slate-800">
+                            <button type="button" onclick="pressNumpadKey('${jogadorAtual.id}', 'clear')" class="calc-btn py-2.5 rounded-xl text-xs text-amber-300 border-amber-500/40 bg-amber-500/10 font-bold">Zerar Selecionado (C)</button>
+                            <button type="button" onclick="pressNumpadKey('${jogadorAtual.id}', 'minus1')" class="calc-btn py-2.5 rounded-xl text-xs text-rose-400 border-rose-500/30">-1 (Remover)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="w-full mt-5 py-3.5 rounded-xl font-bold text-slate-950 btn-gold active:scale-95 transition-all flex items-center justify-center gap-2 font-dwarf uppercase tracking-wider text-base ${jaFinalizouDia ? 'opacity-50 pointer-events-none' : ''}" onclick="finalizarDia('${jogadorAtual.id}')">
+                    <i class="fa-solid fa-person-walking-arrow-right text-slate-950"></i> ${jaFinalizouDia ? 'Já Saiu da Mina' : 'Fora da Mina'}
+                </button>
+            `;
+            wrapper.appendChild(card);
+            window.calcularTotal(jogadorAtual.id);
+        };
+
+        window.calcularTotal = function(id) {
+            const jog = jogadores.find(j => j.id === id);
+            if (!jog) return 0;
+
+            let baseTotal = 0;
+            const listaCristaisStr = [];
+            
+            for (const cristal of cristais) {
+                const quantidade = jog.quantidades[cristal.id] || 0;
+                baseTotal += quantidade * cristal.valor;
+
+                if (quantidade > 0) {
+                    listaCristaisStr.push(`${quantidade} ${cristal.nome.toLowerCase()}`);
+                }
+            }
+            
+            let melhorBonusValor = 0;
+            let melhorBonusTextoLinha = 'Nenhum bônus';
+            
+            const tiposDiferentes = Object.keys(jog.quantidades).filter(key => jog.quantidades[key] > 0).length;
+            
+            if (tiposDiferentes === 6) {
+                if (12 > melhorBonusValor) {
+                    melhorBonusValor = 12;
+                    melhorBonusTextoLinha = '✨ Bônus D (6 Cristais Dif.): +$12';
+                }
+            }
+            
+            if (tiposDiferentes >= 5) {
+                if (8 > melhorBonusValor) {
+                    melhorBonusValor = 8;
+                    melhorBonusTextoLinha = '✨ Bônus C (5 Cristais Dif.): +$8';
+                }
+            }
+            
+            const tipoComQuatro = Object.keys(jog.quantidades).find(key => jog.quantidades[key] >= 4);
+            if (tipoComQuatro) {
+                const outrosTipos = Object.keys(jog.quantidades).filter(k => k !== tipoComQuatro && jog.quantidades[k] > 0);
+                if (outrosTipos.length > 0) {
+                    outrosTipos.sort((a, b) => cristais.find(c => c.id === b).valor - cristais.find(c => c.id === a).valor);
+                    let bonusCalc = jog.quantidades[outrosTipos[0]] * cristais.find(c => c.id === outrosTipos[0]).valor;
+                    let detalheDobra = `${jog.quantidades[outrosTipos[0]] * cristais.find(c => c.id === outrosTipos[0]).valor}`;
+                    if (outrosTipos.length > 1) {
+                        const val2 = jog.quantidades[outrosTipos[1]] * cristais.find(c => c.id === outrosTipos[1]).valor;
+                        bonusCalc += val2;
+                        detalheDobra += ` + ${val2}`;
+                    }
+                    if (bonusCalc > melhorBonusValor) {
+                        melhorBonusValor = bonusCalc;
+                        melhorBonusTextoLinha = `✨ Bônus B: ${detalheDobra} x 2 = $${bonusCalc}`;
+                    }
+                }
+            }
+            
+            const tipoComTres = Object.keys(jog.quantidades).find(key => jog.quantidades[key] >= 3);
+            if (tipoComTres) {
+                const outrosTipos = Object.keys(jog.quantidades).filter(k => k !== tipoComTres && jog.quantidades[k] > 0);
+                if (outrosTipos.length > 0) {
+                    outrosTipos.sort((a, b) => cristais.find(c => c.id === b).valor - cristais.find(c => c.id === a).valor);
+                    const valorOriginalOutro = jog.quantidades[outrosTipos[0]] * cristais.find(c => c.id === outrosTipos[0]).valor;
+                    const bonusCalc = valorOriginalOutro;
+                    if (bonusCalc > melhorBonusValor) {
+                        melhorBonusValor = bonusCalc;
+                        melhorBonusTextoLinha = `✨ Bônus A: ${valorOriginalOutro} x 2 = $${valorOriginalOutro * 2}`;
+                    }
+                }
+            }
+            
+            const ordemSaida = jog.ordemSaidaPorDia[diaAtual] || (jogadores.filter(j => j.historicoPontos && j.historicoPontos[diaAtual - 1] !== undefined).length + 1);
+            const bravura = window.calcularBravuraAutomatica(ordemSaida, jogadores.length);
+
+            let valorEspeciais = 0;
+            let detalhesEspeciaisStr = [];
+
+            if (diaAtual === 5) {
+                const v2 = (jog.cartasValores.b2 || 0) * 2;
+                const v3 = (jog.cartasValores.b3 || 0) * 3;
+                const v4 = (jog.cartasValores.b4 || 0) * 4;
+                valorEspeciais = v2 + v3 + v4;
+
+                if (v2 > 0) detalhesEspeciaisStr.push(`+$${v2} (Ataque $2)`);
+                if (v3 > 0) detalhesEspeciaisStr.push(`+$${v3} (Ataque $3)`);
+                if (v4 > 0) detalhesEspeciaisStr.push(`+$${v4} (Defesa)`);
+            }
+
+            let valorExperiencia = (diaAtual === 5 && jog.fichaExpSelecionada) ? 3 : 0;
+
+            const totalFinalCompleto = baseTotal + melhorBonusValor + bravura + valorEspeciais + valorExperiencia;
+            
+            const resEl = document.getElementById(`resultado-${id}`);
+            if (resEl) resEl.textContent = totalFinalCompleto;
+
+            const displayListaEl = document.getElementById(`display-cristais-lista-${id}`);
+            if (displayListaEl) {
+                if (listaCristaisStr.length > 0) {
+                    displayListaEl.textContent = `${listaCristaisStr.join(' + ')} = $${baseTotal}`;
+                } else {
+                    displayListaEl.textContent = 'Nenhum cristal no carrinho';
+                }
+            }
+
+            const displayBonusEl = document.getElementById(`display-bonus-linha-${id}`);
+            if (displayBonusEl) {
+                let extrasStr = [];
+                if (bravura > 0) extrasStr.push(`+$${bravura} Bravura (${ordemSaida}º a sair)`);
+                if (detalhesEspeciaisStr.length > 0) extrasStr.push(detalhesEspeciaisStr.join(', '));
+                if (valorExperiencia > 0) extrasStr.push(`+$${valorExperiencia} Exp`);
+
+                let linhaFinalBonus = melhorBonusTextoLinha;
+                if (extrasStr.length > 0) {
+                    linhaFinalBonus += ` (${extrasStr.join(', ')})`;
+                }
+                displayBonusEl.textContent = linhaFinalBonus;
+            }
+
+            const targetNameEl = document.getElementById(`display-target-name-${id}`);
+            if (targetNameEl) {
+                let name = 'Nenhum';
+                if (currentTargetId === 'b2') name = 'Ataque ($2)';
+                else if (currentTargetId === 'b3') name = 'Ataque ($3)';
+                else if (currentTargetId === 'b4') name = 'Defesa ($4)';
+                else if (currentTargetId) {
+                    const c = cristais.find(item => item.id === currentTargetId);
+                    if (c) name = `${c.nome} (Max: ${c.max})`;
+                }
+                targetNameEl.textContent = name;
+            }
+
+            return totalFinalCompleto;
+        };
+
+        window.finalizarDia = function(id) {
+            if (processandoFinalizacaoDia) return;
+
+            const jog = jogadores.find(j => j.id === id);
+            if (!jog) return;
+            if (jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) return;
+
+            const totalJaFinalizaram = jogadores.filter(j => j.historicoPontos[diaAtual - 1] !== undefined).length;
+            jog.ordemSaidaPorDia[diaAtual] = totalJaFinalizaram + 1;
+
+            const pontuacaoDia = window.calcularTotal(id);
+            jog.historicoPontos[diaAtual - 1] = pontuacaoDia;
+            jog.historicoBravura[diaAtual - 1] = window.calcularBravuraAutomatica(jog.ordemSaidaPorDia[diaAtual], jogadores.length);
+
+            if (diaAtual === totalDias) {
+                const v2 = (jog.cartasValores.b2 || 0) * 2;
+                const v3 = (jog.cartasValores.b3 || 0) * 3;
+                const v4 = (jog.cartasValores.b4 || 0) * 4;
+                jog.dinheiroCartasDia5 = v2 + v3 + v4;
+            }
+
+            window.atualizarTabelaHistorico();
+            window.renderizarAbasJogadores();
+
+            const todosProntos = jogadores.every(j => j.historicoPontos[diaAtual - 1] !== undefined);
+
+            if (todosProntos) {
+                processandoFinalizacaoDia = true;
+                const currentCard = document.getElementById(`player-card-${id}`);
+                if (currentCard) {
+                    currentCard.classList.add('animate-fade-out-down');
+                }
+
+                setTimeout(() => {
+                    if (diaAtual < totalDias) {
+                        const proximoDia = diaAtual + 1;
+
+                        jogadores.forEach(j => window.zerarCalculadoraJogador(j));
+
+                        jogadores.sort((a, b) => {
+                            const ordemA = a.ordemSaidaPorDia[diaAtual] || 0;
+                            const ordemB = b.ordemSaidaPorDia[diaAtual] || 0;
+                            return ordemB - ordemA;
+                        });
+
+                        diaAtual = proximoDia;
+                        jogadorAtivoId = jogadores[0].id;
+                        processandoFinalizacaoDia = false;
+
+                        window.exibirAvisoNovoDia(diaAtual, jogadores[0].nome, () => {
+                            window.renderizarAbasJogadores();
+                            window.renderizarCardJogador(jogadorAtivoId);
+                        });
+                    } else {
+                        window.finalizarJornada();
+                    }
+                }, 350);
+            } else {
+                const proximoPendente = jogadores.find(j => j.historicoPontos[diaAtual - 1] === undefined);
+                if (proximoPendente) {
+                    window.mudarJogadorAtivo(proximoPendente.id);
+                } else {
+                    window.renderizarCardJogador(id);
+                }
+            }
+        };
+
+        window.atualizarTabelaHistorico = function() {
+            const tableHead = document.querySelector("#history-table thead tr");
+            const tableBody = document.querySelector("#history-table tbody");
+            
+            if (!tableHead || !tableBody) return;
+
+            tableHead.innerHTML = `<th class="py-3 px-4">Jogador</th>`;
+            for(let i = 1; i <= totalDias; i++) {
+                tableHead.innerHTML += `<th class="py-3 px-3 text-center">Dia ${i}</th>`;
+            }
+            tableHead.innerHTML += `<th class="py-3 px-4 text-right">Fortuna Total</th>`;
+
+            tableBody.innerHTML = '';
+
+            jogadores.forEach(jogador => {
+                const row = tableBody.insertRow();
+                row.className = "hover:bg-slate-800/50 transition-all";
+                const palette = playerPalettes[jogador.paletteIndex % playerPalettes.length];
+                
+                let cellNome = row.insertCell(0);
+                cellNome.className = "py-3 px-4 font-bold text-amber-100 flex items-center gap-2";
+                cellNome.innerHTML = `<div class="w-2.5 h-2.5 rounded-full shadow" style="background-color: ${palette.accent};"></div> ${jogador.nome}`;
+
+                let totalAcumulado = 0;
+
+                for (let dia = 1; dia <= totalDias; dia++) {
+                    const pontuacao = (jogador.historicoPontos && jogador.historicoPontos[dia - 1] !== undefined) 
+                        ? jogador.historicoPontos[dia - 1] 
+                        : null;
+                    let cellDia = row.insertCell(dia);
+                    cellDia.className = "py-3 px-3 text-center text-slate-300 font-semibold";
+                    cellDia.textContent = (pontuacao !== null) ? `$${pontuacao}` : '-';
+                    if (pontuacao !== null) totalAcumulado += pontuacao;
+                }
+
+                const totalCell = row.insertCell(totalDias + 1);
+                totalCell.className = "py-3 px-4 text-right font-black text-amber-400 text-base font-dwarf";
+                totalCell.textContent = `$${totalAcumulado}`;
+                jogador.totalFinal = totalAcumulado;
+            });
+        };
+
+        window.finalizarJornada = function() {
+            document.querySelector('.calculator-wrapper').style.display = 'none';
+            document.getElementById('player-tabs-container').style.display = 'none';
+            document.getElementById('history-title').textContent = "Dono da Mina de Quartz";
+
+            jogadores.sort((a, b) => {
+                const diffPontos = (b.totalFinal || 0) - (a.totalFinal || 0);
+                if (diffPontos !== 0) {
+                    return diffPontos;
+                }
+                return (b.dinheiroCartasDia5 || 0) - (a.dinheiroCartasDia5 || 0);
+            });
+
+            const medalIcons = ['👑', '🥈', '🥉'];
+            const medalColors = [
+                'from-amber-500/30 via-yellow-600/20 to-amber-700/10 border-amber-400 text-amber-300', 
+                'from-slate-400/20 to-slate-600/10 border-slate-400 text-slate-200', 
+                'from-amber-800/20 to-amber-900/10 border-amber-700 text-amber-500'
+            ];
+
+            let rankingHTML = `<div class="space-y-4 max-w-xl mx-auto my-6">`;
+
+            for (let i = 0; i < jogadores.length; i++) {
+                const style = medalColors[i] || 'bg-slate-900/50 border-slate-800 text-slate-400';
+                const medal = medalIcons[i] || `#${i + 1}`;
+                const palette = playerPalettes[jogadores[i].paletteIndex % playerPalettes.length];
+
+                rankingHTML += `
+                    <div class="p-5 rounded-2xl bg-gradient-to-r ${style} border flex items-center justify-between shadow-2xl animate-fade-in hover:scale-[1.02] transition-all" style="animation-delay: ${i * 0.15}s">
+                        <div class="flex items-center gap-4">
+                            <span class="text-3xl">${medal}</span>
+                            <div>
+                                <h3 class="font-extrabold text-lg text-white font-dwarf flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${palette.accent};"></span>
+                                    ${jogadores[i].nome}
+                                </h3>
+                                <span class="text-xs text-amber-300/80">${i === 0 ? 'Dono Oficial da Mina Quartz!' : 'Minerador'}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-3xl font-black text-amber-400 font-dwarf">$${jogadores[i].totalFinal || 0}</span>
+                            <span class="text-xs text-slate-400 block uppercase font-bold">Acumulado</span>
+                        </div>
+                    </div>
+                `;
+            }
+            rankingHTML += `</div>`;
+
+            rankingHTML += `
+                <div class="text-center mt-8 animate-fade-in" style="animation-delay: ${jogadores.length * 0.15 + 0.1}s">
+                    <button onclick="reiniciarPartida()" class="px-8 py-4 rounded-xl font-bold text-slate-950 btn-gold text-base inline-flex items-center gap-3 font-dwarf uppercase shadow-2xl transition-all">
+                        <i class="fa-solid fa-rotate-right text-slate-950"></i> Nova Partida
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('history-content').innerHTML = rankingHTML;
+        };
+
+        window.reiniciarPartida = function() {
+            diaAtual = 1;
+            jogadores = [];
+            jogadorAtivoId = null;
+            processandoFinalizacaoDia = false;
+
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('flex');
+            
+            const calcWrapper = document.querySelector('.calculator-wrapper');
+            if (calcWrapper) calcWrapper.style.display = '';
+            
+            const tabsContainer = document.getElementById('player-tabs-container');
+            if (tabsContainer) tabsContainer.style.display = '';
+
+            const historyContent = document.getElementById('history-content');
+            if (historyContent) {
+                historyContent.innerHTML = `
+                    <table id="history-table" class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 text-amber-300/80 text-xs uppercase tracking-wider font-dwarf">
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/60 text-sm">
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            document.getElementById('history-title').textContent = "Venda de Cristais ($)";
+
+            const setupContainer = document.getElementById('setup-container');
+            if (setupContainer) {
+                setupContainer.classList.remove('hidden');
+            }
+
+            window.renderNameInputs();
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', window.renderNameInputs);
+        } else {
+            window.renderNameInputs();
+        }
+    </script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registrado com sucesso:', reg.scope))
+        .catch(err => console.error('Falha ao registrar Service Worker:', err));
+    });
+  }
+</script>
+</body>
+</html>
