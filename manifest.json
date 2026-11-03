@@ -1,4 +1,5 @@
 {
+  "id": "/quartz-calculator",
   "name": "Quartz - Calculadora",
   "short_name": "Quartz Calc",
   "description": "Somador e calculadora de pontos para o jogo de tabuleiro Quartz",
