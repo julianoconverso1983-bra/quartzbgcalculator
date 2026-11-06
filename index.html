@@ -1,3 +1,6 @@
+Aqui está o código HTML completo atualizado.
+O botão "Bônus por Bravura" foi mantido exclusivamente na Calculadora Básica e foi removido da visualização/card do modo multiplayer ("Entrar na Mina"). No modo de partida completa, a bravura continua sendo calculada automaticamente de acordo com a ordem de saída dos jogadores do dia.
+Código HTML Completo Atualizado:
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -164,7 +167,7 @@
         </div>
     </div>
 
-    <!-- Banner de Transição de Dia (Aviso de Novo Dia - 3 Segundos) -->
+    <!-- Banner de Transição de Dia -->
     <div id="day-transition-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
         <div class="glass-panel p-8 rounded-3xl max-w-md w-full text-center space-y-5 animate-scale-in border-amber-500/50 shadow-2xl">
             <div class="w-20 h-20 bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto border border-amber-500/40 shadow-inner">
@@ -212,14 +215,21 @@
                 <i class="fa-solid fa-pickaxe text-slate-950"></i> Iniciar Partida
             </button>
 
-            <!-- Botão Calculadora Básica -->
-            <button onclick="iniciarCalculadoraBasica()" class="w-full py-3.5 rounded-xl font-bold text-amber-300 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-amber-500/40 text-sm flex items-center justify-center gap-2 font-dwarf uppercase transition-all shadow-md">
+            <!-- Botão de Calculadora Básica -->
+            <button onclick="iniciarCalculadoraBasica()" class="w-full py-3.5 rounded-xl font-bold text-amber-300 bg-slate-800/90 hover:bg-slate-700/90 active:scale-95 border border-amber-500/40 text-base flex items-center justify-center gap-2 font-dwarf uppercase transition-all shadow-md">
                 <i class="fa-solid fa-calculator text-amber-400"></i> Calculadora Básica
             </button>
         </div>
     </main>
 
-    <!-- Conteúdo Principal da Calculadora -->
+    <!-- Conteúdo da Calculadora Básica -->
+    <main id="basic-calc-container" class="max-w-xl w-full mx-auto hidden flex-col gap-4 animate-fade-in">
+        <div id="basic-calc-wrapper">
+            <!-- Gerado via JS -->
+        </div>
+    </main>
+
+    <!-- Conteúdo Principal da Calculadora do Jogo Completo -->
     <main id="main-content" class="max-w-xl w-full mx-auto hidden flex-col gap-4 animate-fade-in">
         
         <!-- Abas de Navegação por Jogador -->
@@ -272,11 +282,16 @@
         let currentTargetId = null;
         let jogadorAtivoId = null;
         let processandoFinalizacaoDia = false;
-        let modoBasico = false;
 
-        /*
-         * Proteção adicional contra o gesto de atualizar a página no Android
-         */
+        // Estado do Modo Calculadora Básica
+        let basicState = {
+            quantidades: { quartzo: 0, rubelita: 0, esmeralda: 0, safira: 0, rubi: 0, ambar: 0 },
+            cartasValores: { b2: 0, b3: 0, b4: 0 },
+            fichaExpSelecionada: false,
+            bonusBravura: 0,
+            currentTargetId: null
+        };
+
         (function bloquearPullToRefresh() {
             let toqueInicialY = 0;
 
@@ -372,7 +387,6 @@
         };
 
         window.iniciarJornadaLocal = function() {
-            modoBasico = false;
             const numEl = document.getElementById('num-players');
             if (!numEl) return;
             const numPlayers = parseInt(numEl.value);
@@ -393,7 +407,6 @@
                     fichaExpSelecionada: false,
                     quantidades: { quartzo: 0, rubelita: 0, esmeralda: 0, safira: 0, rubi: 0, ambar: 0 },
                     cartasValores: { b2: 0, b3: 0, b4: 0 },
-                    bravuraManual: 0,
                     dinheiroCartasDia5: 0,
                     ordemSaidaPorDia: {}
                 });
@@ -401,10 +414,12 @@
 
             diaAtual = 1;
             document.getElementById('setup-container').classList.add('hidden');
+            document.getElementById('basic-calc-container').classList.add('hidden');
+            document.getElementById('basic-calc-container').classList.remove('flex');
+
             const mainContent = document.getElementById('main-content');
             mainContent.classList.remove('hidden');
             mainContent.classList.add('flex');
-            document.getElementById('history-section').classList.remove('hidden');
 
             const primeiro = jogadores[0];
             jogadorAtivoId = primeiro ? primeiro.id : null;
@@ -414,41 +429,337 @@
             window.atualizarTabelaHistorico();
         };
 
+        /* ==================== MODO CALCULADORA BÁSICA ==================== */
         window.iniciarCalculadoraBasica = function() {
-            modoBasico = true;
-            jogadores = [{
-                id: 'p_basico',
-                nome: 'Minerador',
-                paletteIndex: 2,
-                historicoPontos: [],
-                historicoBravura: [],
-                totalFinal: 0,
-                fichaExpSelecionada: false,
+            basicState = {
                 quantidades: { quartzo: 0, rubelita: 0, esmeralda: 0, safira: 0, rubi: 0, ambar: 0 },
                 cartasValores: { b2: 0, b3: 0, b4: 0 },
-                bravuraManual: 0,
-                dinheiroCartasDia5: 0,
-                ordemSaidaPorDia: {}
-            }];
+                fichaExpSelecionada: false,
+                bonusBravura: 0,
+                currentTargetId: null
+            };
 
-            diaAtual = 5; // Habilita botões do quinto dia
             document.getElementById('setup-container').classList.add('hidden');
-            const mainContent = document.getElementById('main-content');
-            mainContent.classList.remove('hidden');
-            mainContent.classList.add('flex');
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('flex');
 
-            document.getElementById('player-tabs-container').innerHTML = '';
-            document.getElementById('history-section').classList.add('hidden');
+            const basicContainer = document.getElementById('basic-calc-container');
+            basicContainer.classList.remove('hidden');
+            basicContainer.classList.add('flex');
 
-            jogadorAtivoId = 'p_basico';
-            window.renderizarCardJogador(jogadorAtivoId);
+            window.renderizarCalculadoraBasica();
         };
 
+        window.voltarParaMenu = function() {
+            document.getElementById('basic-calc-container').classList.add('hidden');
+            document.getElementById('basic-calc-container').classList.remove('flex');
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('flex');
+            document.getElementById('setup-container').classList.remove('hidden');
+        };
+
+        window.adicionarBravuraBasica = function() {
+            if (basicState.bonusBravura < 3) {
+                basicState.bonusBravura += 1;
+            } else {
+                basicState.bonusBravura = 0;
+            }
+            const btnEl = document.getElementById('btn-bravura-basica');
+            if (btnEl) btnEl.textContent = `+${basicState.bonusBravura}`;
+            window.calcularTotalBasico();
+        };
+
+        window.handleItemClickBasico = function(itemId) {
+            basicState.currentTargetId = itemId;
+            document.querySelectorAll('.calc-btn-target-basic').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`btn-target-basic-${itemId}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const cristal = cristais.find(c => c.id === itemId);
+
+            if (cristal) {
+                const valorAtual = basicState.quantidades[itemId] || 0;
+                if (valorAtual >= cristal.max) {
+                    window.showModal("Limite Atingido", `O limite máximo do manual para o cristal ${cristal.nome} é de ${cristal.max} unidades!`, "fa-triangle-exclamation");
+                    return;
+                }
+                basicState.quantidades[itemId] = valorAtual + 1;
+            } else if (itemId === 'b2' || itemId === 'b3' || itemId === 'b4') {
+                basicState.cartasValores[itemId] = (basicState.cartasValores[itemId] || 0) + 1;
+            }
+
+            const badgeCountEl = document.getElementById(`count-badge-basic-${itemId}`);
+            if (badgeCountEl) {
+                if (itemId === 'b2' || itemId === 'b3' || itemId === 'b4') badgeCountEl.textContent = basicState.cartasValores[itemId];
+                else badgeCountEl.textContent = basicState.quantidades[itemId];
+            }
+
+            window.calcularTotalBasico();
+        };
+
+        window.handleExpCheckboxBasico = function(checkbox) {
+            basicState.fichaExpSelecionada = checkbox.checked;
+            window.calcularTotalBasico();
+        };
+
+        window.pressNumpadKeyBasico = function(action) {
+            if (!basicState.currentTargetId) return;
+
+            let currentValue = 0;
+            if (basicState.currentTargetId === 'b2' || basicState.currentTargetId === 'b3' || basicState.currentTargetId === 'b4') {
+                currentValue = basicState.cartasValores[basicState.currentTargetId];
+            } else {
+                currentValue = basicState.quantidades[basicState.currentTargetId] || 0;
+            }
+
+            if (action === 'clear') currentValue = 0;
+            else if (action === 'minus1') currentValue = Math.max(0, currentValue - 1);
+
+            if (basicState.currentTargetId === 'b2' || basicState.currentTargetId === 'b3' || basicState.currentTargetId === 'b4') {
+                basicState.cartasValores[basicState.currentTargetId] = currentValue;
+            } else {
+                basicState.quantidades[basicState.currentTargetId] = currentValue;
+            }
+
+            const badgeCountEl = document.getElementById(`count-badge-basic-${basicState.currentTargetId}`);
+            if (badgeCountEl) badgeCountEl.textContent = currentValue;
+
+            window.calcularTotalBasico();
+        };
+
+        window.renderizarCalculadoraBasica = function() {
+            const wrapper = document.getElementById('basic-calc-wrapper');
+            if (!wrapper) return;
+
+            wrapper.innerHTML = `
+                <div class="glass-panel rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden animate-fade-in border-amber-500/30">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black text-lg shadow border border-amber-500/40 font-dwarf">
+                                    <i class="fa-solid fa-calculator"></i>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] uppercase font-extrabold text-amber-300/80 tracking-wider font-dwarf block">Calculadora Avulsa</span>
+                                    <h3 class="font-bold text-white text-lg">Modo Básico</h3>
+                                </div>
+                            </div>
+
+                            <button onclick="voltarParaMenu()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 text-xs font-bold border border-amber-500/30 transition-all flex items-center gap-1.5">
+                                <i class="fa-solid fa-arrow-left"></i> Menu
+                            </button>
+                        </div>
+
+                        <!-- DISPLAY VIRTUAL -->
+                        <div class="bg-slate-950/90 rounded-2xl p-4 border border-amber-500/40 shadow-inner relative overflow-hidden space-y-1">
+                            <div class="flex justify-between items-center text-[10px] text-amber-300/70 font-dwarf uppercase tracking-wider">
+                                <span>Selecionado</span>
+                                <span id="display-target-name-basic">Nenhum</span>
+                            </div>
+
+                            <div id="display-cristais-lista-basic" class="text-xs sm:text-sm font-semibold text-slate-200 truncate">
+                                Nenhum cristal no carrinho
+                            </div>
+
+                            <div id="display-bonus-linha-basic" class="text-xs font-bold text-emerald-400 min-h-[1.2rem] truncate">
+                                Nenhum bônus
+                            </div>
+
+                            <div class="text-3xl sm:text-4xl font-black text-amber-400 font-dwarf tracking-widest text-right pt-1 border-t border-slate-800/80">
+                                $<span id="resultado-basic">0</span>
+                            </div>
+                        </div>
+
+                        <!-- TECLADO NUMÉRICO E BOTÕES DE ITENS -->
+                        <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 space-y-2">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-dwarf">Clique no item para somar +1:</span>
+                            
+                            <!-- Cristais -->
+                            <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                                ${cristais.map(c => `
+                                    <button type="button" id="btn-target-basic-${c.id}" onclick="handleItemClickBasico('${c.id}')" class="calc-btn calc-btn-target calc-btn-target-basic py-2 px-1 rounded-xl text-xs flex flex-col items-center justify-center gap-0.5">
+                                        <div class="flex items-center gap-1">
+                                            ${c.svg}
+                                            <span class="text-[10px] truncate">${c.nome}</span>
+                                        </div>
+                                        <span id="count-badge-basic-${c.id}" class="text-[11px] font-extrabold text-amber-300 bg-slate-950/60 px-1.5 py-0.5 rounded-md w-full text-center">${basicState.quantidades[c.id] || 0}</span>
+                                    </button>
+                                `).join('')}
+                            </div>
+
+                            <!-- Ficha Exp e Bônus por Bravura (Apenas no Modo Básico) -->
+                            <div class="pt-1 grid grid-cols-2 gap-1.5">
+                                <div class="calc-btn calc-btn-target calc-btn-target-basic py-2 px-3 rounded-xl text-[11px] flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5 font-bold text-amber-300"><i class="fa-solid fa-award text-amber-400 text-xs"></i> Ficha Exp ($3)</span>
+                                    <input type="checkbox" id="checkbox-exp-basic" onchange="handleExpCheckboxBasico(this)" ${basicState.fichaExpSelecionada ? 'checked' : ''} class="w-4 h-4 accent-amber-500 cursor-pointer rounded">
+                                </div>
+
+                                <button type="button" onclick="adicionarBravuraBasica()" class="calc-btn py-2 px-3 rounded-xl text-[11px] flex items-center justify-between bg-amber-500/10 border-amber-500/40 text-amber-300 font-bold">
+                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-amber-400 text-xs"></i> Bônus por Bravura</span>
+                                    <span id="btn-bravura-basica" class="text-xs bg-amber-500/30 px-2 py-0.5 rounded-md font-extrabold text-amber-300">+${basicState.bonusBravura}</span>
+                                </button>
+                            </div>
+
+                            <!-- Cartas de Ação (Ataque/Defesa) -->
+                            <div class="pt-1 space-y-1">
+                                <span class="text-[10px] font-bold text-amber-300/80 uppercase tracking-wider block font-dwarf">Venda das Cartas de Ação</span>
+                                <div class="grid grid-cols-3 gap-1.5">
+                                    <button type="button" id="btn-target-basic-b2" onclick="handleItemClickBasico('b2')" class="calc-btn calc-btn-target calc-btn-target-basic py-2 px-1 rounded-xl text-[11px] flex flex-col items-center justify-center gap-0.5 bg-blue-600/20 border-blue-500/40 text-blue-200">
+                                        <span class="flex items-center gap-1"><i class="fa-solid fa-scroll text-blue-400 text-xs"></i> Ataque ($2)</span>
+                                        <span id="count-badge-basic-b2" class="text-[11px] font-extrabold text-blue-300 bg-slate-950/60 px-1.5 py-0.5 rounded-md w-full text-center">${basicState.cartasValores.b2 || 0}</span>
+                                    </button>
+                                    <button type="button" id="btn-target-basic-b3" onclick="handleItemClickBasico('b3')" class="calc-btn calc-btn-target calc-btn-target-basic py-2 px-1 rounded-xl text-[11px] flex flex-col items-center justify-center gap-0.5 bg-blue-600/20 border-blue-500/40 text-blue-200">
+                                        <span class="flex items-center gap-1"><i class="fa-solid fa-scroll text-blue-400 text-xs"></i> Ataque ($3)</span>
+                                        <span id="count-badge-basic-b3" class="text-[11px] font-extrabold text-blue-300 bg-slate-950/60 px-1.5 py-0.5 rounded-md w-full text-center">${basicState.cartasValores.b3 || 0}</span>
+                                    </button>
+                                    <button type="button" id="btn-target-basic-b4" onclick="handleItemClickBasico('b4')" class="calc-btn calc-btn-target calc-btn-target-basic py-2 px-1 rounded-xl text-[11px] flex flex-col items-center justify-center gap-0.5 bg-purple-600/30 border-purple-500/50 text-purple-200">
+                                        <span class="flex items-center gap-1"><i class="fa-solid fa-scroll text-purple-400 text-xs"></i> Defesa ($4)</span>
+                                        <span id="count-badge-basic-b4" class="text-[11px] font-extrabold text-purple-300 bg-slate-950/60 px-1.5 py-0.5 rounded-md w-full text-center">${basicState.cartasValores.b4 || 0}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Botões de Controle -->
+                            <div class="grid grid-cols-2 gap-1.5 pt-2 border-t border-slate-800">
+                                <button type="button" onclick="pressNumpadKeyBasico('clear')" class="calc-btn py-2.5 rounded-xl text-xs text-amber-300 border-amber-500/40 bg-amber-500/10 font-bold">Zerar Selecionado (C)</button>
+                                <button type="button" onclick="pressNumpadKeyBasico('minus1')" class="calc-btn py-2.5 rounded-xl text-xs text-rose-400 border-rose-500/30">-1 (Remover)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            window.calcularTotalBasico();
+        };
+
+        window.calcularTotalBasico = function() {
+            let baseTotal = 0;
+            const listaCristaisStr = [];
+            
+            for (const cristal of cristais) {
+                const quantidade = basicState.quantidades[cristal.id] || 0;
+                baseTotal += quantidade * cristal.valor;
+
+                if (quantidade > 0) {
+                    listaCristaisStr.push(`${quantidade} ${cristal.nome.toLowerCase()}`);
+                }
+            }
+            
+            let melhorBonusValor = 0;
+            let melhorBonusTextoLinha = 'Nenhum bônus';
+            
+            const tiposDiferentes = Object.keys(basicState.quantidades).filter(key => basicState.quantidades[key] > 0).length;
+            
+            if (tiposDiferentes === 6) {
+                if (12 > melhorBonusValor) {
+                    melhorBonusValor = 12;
+                    melhorBonusTextoLinha = '✨ Bônus D (6 Cristais Dif.): +$12';
+                }
+            }
+            
+            if (tiposDiferentes >= 5) {
+                if (8 > melhorBonusValor) {
+                    melhorBonusValor = 8;
+                    melhorBonusTextoLinha = '✨ Bônus C (5 Cristais Dif.): +$8';
+                }
+            }
+            
+            const tipoComQuatro = Object.keys(basicState.quantidades).find(key => basicState.quantidades[key] >= 4);
+            if (tipoComQuatro) {
+                const outrosTipos = Object.keys(basicState.quantidades).filter(k => k !== tipoComQuatro && basicState.quantidades[k] > 0);
+                if (outrosTipos.length > 0) {
+                    outrosTipos.sort((a, b) => cristais.find(c => c.id === b).valor - cristais.find(c => c.id === a).valor);
+                    let bonusCalc = basicState.quantidades[outrosTipos[0]] * cristais.find(c => c.id === outrosTipos[0]).valor;
+                    let detalheDobra = `${basicState.quantidades[outrosTipos[0]] * cristais.find(c => c.id === outrosTipos[0]).valor}`;
+                    if (outrosTipos.length > 1) {
+                        const val2 = basicState.quantidades[outrosTipos[1]] * cristais.find(c => c.id === outrosTipos[1]).valor;
+                        bonusCalc += val2;
+                        detalheDobra += ` + ${val2}`;
+                    }
+                    if (bonusCalc > melhorBonusValor) {
+                        melhorBonusValor = bonusCalc;
+                        melhorBonusTextoLinha = `✨ Bônus B: ${detalheDobra} x 2 = $${bonusCalc}`;
+                    }
+                }
+            }
+            
+            const tipoComTres = Object.keys(basicState.quantidades).find(key => key !== undefined && basicState.quantidades[key] >= 3);
+            if (tipoComTres) {
+                const outrosTipos = Object.keys(basicState.quantidades).filter(k => k !== tipoComTres && basicState.quantidades[k] > 0);
+                if (outrosTipos.length > 0) {
+                    outrosTipos.sort((a, b) => cristais.find(c => c.id === b).valor - cristais.find(c => c.id === a).valor);
+                    const valorOriginalOutro = basicState.quantidades[outrosTipos[0]] * cristais.find(c => c.id === outrosTipos[0]).valor;
+                    const bonusCalc = valorOriginalOutro;
+                    if (bonusCalc > melhorBonusValor) {
+                        melhorBonusValor = bonusCalc;
+                        melhorBonusTextoLinha = `✨ Bônus A: ${valorOriginalOutro} x 2 = $${valorOriginalOutro * 2}`;
+                    }
+                }
+            }
+            
+            const bravura = basicState.bonusBravura;
+
+            const v2 = (basicState.cartasValores.b2 || 0) * 2;
+            const v3 = (basicState.cartasValores.b3 || 0) * 3;
+            const v4 = (basicState.cartasValores.b4 || 0) * 4;
+            const valorEspeciais = v2 + v3 + v4;
+
+            let detalhesEspeciaisStr = [];
+            if (v2 > 0) detalhesEspeciaisStr.push(`+$${v2} (Ataque $2)`);
+            if (v3 > 0) detalhesEspeciaisStr.push(`+$${v3} (Ataque $3)`);
+            if (v4 > 0) detalhesEspeciaisStr.push(`+$${v4} (Defesa)`);
+
+            const valorExperiencia = basicState.fichaExpSelecionada ? 3 : 0;
+
+            const totalFinalCompleto = baseTotal + melhorBonusValor + bravura + valorEspeciais + valorExperiencia;
+            
+            const resEl = document.getElementById('resultado-basic');
+            if (resEl) resEl.textContent = totalFinalCompleto;
+
+            const displayListaEl = document.getElementById('display-cristais-lista-basic');
+            if (displayListaEl) {
+                if (listaCristaisStr.length > 0) {
+                    displayListaEl.textContent = `${listaCristaisStr.join(' + ')} = $${baseTotal}`;
+                } else {
+                    displayListaEl.textContent = 'Nenhum cristal no carrinho';
+                }
+            }
+
+            const displayBonusEl = document.getElementById('display-bonus-linha-basic');
+            if (displayBonusEl) {
+                let extrasStr = [];
+                if (bravura > 0) extrasStr.push(`+$${bravura} Bravura`);
+                if (detalhesEspeciaisStr.length > 0) extrasStr.push(detalhesEspeciaisStr.join(', '));
+                if (valorExperiencia > 0) extrasStr.push(`+$${valorExperiencia} Exp`);
+
+                let linhaFinalBonus = melhorBonusTextoLinha;
+                if (extrasStr.length > 0) {
+                    linhaFinalBonus += ` (${extrasStr.join(', ')})`;
+                }
+                displayBonusEl.textContent = linhaFinalBonus;
+            }
+
+            const targetNameEl = document.getElementById('display-target-name-basic');
+            if (targetNameEl) {
+                let name = 'Nenhum';
+                if (basicState.currentTargetId === 'b2') name = 'Ataque ($2)';
+                else if (basicState.currentTargetId === 'b3') name = 'Ataque ($3)';
+                else if (basicState.currentTargetId === 'b4') name = 'Defesa ($4)';
+                else if (basicState.currentTargetId) {
+                    const c = cristais.find(item => item.id === basicState.currentTargetId);
+                    if (c) name = `${c.nome} (Max: ${c.max})`;
+                }
+                targetNameEl.textContent = name;
+            }
+
+            return totalFinalCompleto;
+        };
+
+        /* ==================== MODO COMPLETO (JOGO DE TABULEIRO) ==================== */
         window.zerarCalculadoraJogador = function(jog) {
             jog.quantidades = { quartzo: 0, rubelita: 0, esmeralda: 0, safira: 0, rubi: 0, ambar: 0 };
             jog.fichaExpSelecionada = false;
             jog.cartasValores = { b2: 0, b3: 0, b4: 0 };
-            jog.bravuraManual = 0;
         };
 
         window.exibirAvisoNovoDia = function(novoDia, nomePrimeiroJogador, callback) {
@@ -472,7 +783,7 @@
 
         window.renderizarAbasJogadores = function() {
             const container = document.getElementById('player-tabs-container');
-            if (!container || modoBasico) return;
+            if (!container) return;
 
             container.innerHTML = jogadores.map((j) => {
                 const jaFinalizou = j.historicoPontos && j.historicoPontos[diaAtual - 1] !== undefined;
@@ -508,7 +819,7 @@
             const jog = jogadores.find(j => j.id === playerId);
             if (!jog) return;
 
-            if (!modoBasico && jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) return;
+            if (jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) return;
 
             if (itemId === 'exp') {
                 return; 
@@ -541,28 +852,10 @@
             window.calcularTotal(playerId);
         };
 
-        window.adicionarBravuraManual = function(playerId) {
-            const jog = jogadores.find(j => j.id === playerId);
-            if (!jog) return;
-            if (!modoBasico && jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) return;
-
-            jog.bravuraManual = (jog.bravuraManual || 0) + 1;
-            if (jog.bravuraManual > 3) {
-                jog.bravuraManual = 0;
-            }
-
-            const countBadge = document.getElementById(`count-badge-bravura-${playerId}`);
-            if (countBadge) {
-                countBadge.textContent = jog.bravuraManual;
-            }
-
-            window.calcularTotal(playerId);
-        };
-
         window.handleExpCheckbox = function(playerId, checkbox) {
             const jog = jogadores.find(j => j.id === playerId);
             if (!jog) return;
-            if (!modoBasico && jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) {
+            if (jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) {
                 checkbox.checked = jog.fichaExpSelecionada;
                 return;
             }
@@ -573,7 +866,7 @@
         window.pressNumpadKey = function(playerId, action) {
             const jog = jogadores.find(j => j.id === playerId);
             if (!jog || !currentTargetId) return;
-            if (!modoBasico && jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) return;
+            if (jog.historicoPontos && jog.historicoPontos[diaAtual - 1] !== undefined) return;
 
             let currentValue = 0;
             if (currentTargetId === 'b2' || currentTargetId === 'b3' || currentTargetId === 'b4') currentValue = jog.cartasValores[currentTargetId];
@@ -609,17 +902,17 @@
             card.style.borderColor = palette.border;
             card.id = `player-card-${jogadorAtual.id}`;
             
-            const jaFinalizouDia = !modoBasico && jogadorAtual.historicoPontos && jogadorAtual.historicoPontos[diaAtual - 1] !== undefined;
+            const jaFinalizouDia = jogadorAtual.historicoPontos && jogadorAtual.historicoPontos[diaAtual - 1] !== undefined;
 
             card.innerHTML = `
                 <div class="space-y-4">
                     <div class="flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 rounded-xl flex items-center justify-center font-black text-slate-950 text-xl shadow font-dwarf" style="background: ${palette.accent};">
-                                ${modoBasico ? '<i class="fa-solid fa-calculator text-slate-950"></i>' : index + 1}
+                                ${index + 1}
                             </div>
                             <div>
-                                <span class="text-[10px] uppercase font-extrabold text-amber-300/80 tracking-wider font-dwarf block">${modoBasico ? 'Modo Simplificado' : 'Calculadora do Jogador'}</span>
+                                <span class="text-[10px] uppercase font-extrabold text-amber-300/80 tracking-wider font-dwarf block">Calculadora do Jogador</span>
                                 <h3 class="font-bold text-white text-lg flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${palette.accent};"></span>
                                     ${jogadorAtual.nome}
@@ -627,22 +920,15 @@
                             </div>
                         </div>
 
-                        ${modoBasico ? `
-                            <button onclick="reiniciarPartida()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 font-bold border border-amber-500/30 rounded-xl text-xs flex items-center gap-1.5 transition-all">
-                                <i class="fa-solid fa-arrow-left text-amber-400"></i> Voltar
-                            </button>
-                        ` : `
-                            <!-- Informações do Dia integradas com fonte maior -->
-                            <div class="flex items-center gap-3 bg-slate-900/90 px-3.5 py-2.5 rounded-xl border border-amber-500/30 shadow-inner">
-                                <span class="w-9 h-9 bg-amber-500/20 text-amber-400 rounded-lg flex items-center justify-center border border-amber-500/30">
-                                    <i class="fa-solid fa-sun text-base"></i>
-                                </span>
-                                <div class="text-right">
-                                    <h4 class="mine-title text-sm sm:text-base font-black text-amber-400 uppercase tracking-widest leading-tight">Dia ${diaAtual} de ${totalDias}</h4>
-                                    <span class="text-[10px] ${jaFinalizouDia ? 'text-emerald-400' : 'text-amber-300/80'} font-semibold block">${jaFinalizouDia ? 'Fora da Mina (Concluído)' : 'Em andamento'}</span>
-                                </div>
+                        <div class="flex items-center gap-3 bg-slate-900/90 px-3.5 py-2.5 rounded-xl border border-amber-500/30 shadow-inner">
+                            <span class="w-9 h-9 bg-amber-500/20 text-amber-400 rounded-lg flex items-center justify-center border border-amber-500/30">
+                                <i class="fa-solid fa-sun text-base"></i>
+                            </span>
+                            <div class="text-right">
+                                <h4 class="mine-title text-sm sm:text-base font-black text-amber-400 uppercase tracking-widest leading-tight">Dia ${diaAtual} de ${totalDias}</h4>
+                                <span class="text-[10px] ${jaFinalizouDia ? 'text-emerald-400' : 'text-amber-300/80'} font-semibold block">${jaFinalizouDia ? 'Fora da Mina (Concluído)' : 'Em andamento'}</span>
                             </div>
-                        `}
+                        </div>
                     </div>
 
                     <!-- DISPLAY VIRTUAL DA CALCULADORA -->
@@ -669,7 +955,6 @@
                     <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 space-y-2 ${jaFinalizouDia ? 'opacity-50 pointer-events-none' : ''}">
                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-dwarf">${jaFinalizouDia ? '⚠️ Jogador já saiu da mina neste dia' : 'Clique no item para somar +1:'}</span>
                         
-                        <!-- Seletor de alvos (Cristais com max limite) -->
                         <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                             ${cristais.map(c => `
                                 <button type="button" id="btn-target-${c.id}" onclick="handleItemClick('${jogadorAtual.id}', '${c.id}')" class="calc-btn calc-btn-target py-2 px-1 rounded-xl text-xs flex flex-col items-center justify-center gap-0.5">
@@ -682,21 +967,15 @@
                             `).join('')}
                         </div>
 
-                        <!-- Checkbox Exp e Botão Bônus por Bravura -->
-                        <div class="pt-1 grid ${diaAtual === 5 ? 'grid-cols-2' : 'grid-cols-1'} gap-1.5 ${diaAtual === 5 ? '' : ''}">
-                            <div class="calc-btn calc-btn-target py-2 px-3 rounded-xl text-[11px] flex items-center justify-between ${diaAtual === 5 ? '' : 'hidden'}">
+                        <!-- Checkbox Exp (Visível Apenas no Dia 5) -->
+                        <div class="pt-1 ${diaAtual === 5 ? '' : 'hidden'}">
+                            <div class="calc-btn calc-btn-target py-2 px-3 rounded-xl text-[11px] flex items-center justify-between">
                                 <span class="flex items-center gap-1.5 font-bold text-amber-300"><i class="fa-solid fa-award text-amber-400 text-xs"></i> Ficha Exp ($3)</span>
                                 <input type="checkbox" id="checkbox-exp-${jogadorAtual.id}" onchange="handleExpCheckbox('${jogadorAtual.id}', this)" ${jogadorAtual.fichaExpSelecionada ? 'checked' : ''} class="w-4 h-4 accent-amber-500 cursor-pointer rounded">
                             </div>
-                            
-                            <!-- Botão Novo: Bônus por Bravura (+1 até no máx 3) -->
-                            <button type="button" onclick="adicionarBravuraManual('${jogadorAtual.id}')" class="calc-btn py-2 px-3 rounded-xl text-[11px] flex items-center justify-between bg-amber-600/20 border-amber-500/40 text-amber-200">
-                                <span class="flex items-center gap-1.5 font-bold"><i class="fa-solid fa-shield-halved text-amber-400 text-xs"></i> Bônus por Bravura</span>
-                                <span id="count-badge-bravura-${jogadorAtual.id}" class="text-[11px] font-extrabold text-amber-300 bg-slate-950/60 px-2 py-0.5 rounded-md text-center">${jogadorAtual.bravuraManual || 0}</span>
-                            </button>
                         </div>
 
-                        <!-- Venda das Cartas de Ação (Apenas no Dia 5 ou Modo Básico) -->
+                        <!-- Venda das Cartas de Ação (Apenas no Dia 5) -->
                         <div id="section-cartas-acao" class="pt-2 space-y-1 ${diaAtual === 5 ? '' : 'hidden'}">
                             <span class="text-[10px] font-bold text-amber-300/80 uppercase tracking-wider block font-dwarf">Venda das Cartas de Ação</span>
                             <div class="grid grid-cols-3 gap-1.5">
@@ -715,7 +994,7 @@
                             </div>
                         </div>
 
-                        <!-- Botões de Controle (Zerar C à esquerda e -1 à direita) -->
+                        <!-- Botões de Controle -->
                         <div class="grid grid-cols-2 gap-1.5 pt-2 border-t border-slate-800">
                             <button type="button" onclick="pressNumpadKey('${jogadorAtual.id}', 'clear')" class="calc-btn py-2.5 rounded-xl text-xs text-amber-300 border-amber-500/40 bg-amber-500/10 font-bold">Zerar Selecionado (C)</button>
                             <button type="button" onclick="pressNumpadKey('${jogadorAtual.id}', 'minus1')" class="calc-btn py-2.5 rounded-xl text-xs text-rose-400 border-rose-500/30">-1 (Remover)</button>
@@ -723,15 +1002,9 @@
                     </div>
                 </div>
 
-                ${modoBasico ? `
-                    <button class="w-full mt-5 py-3.5 rounded-xl font-bold text-slate-950 btn-gold active:scale-95 transition-all flex items-center justify-center gap-2 font-dwarf uppercase tracking-wider text-base" onclick="zerarCalculadoraJogador(jogadores[0]); renderizarCardJogador('p_basico');">
-                        <i class="fa-solid fa-rotate-right text-slate-950"></i> Limpar Calculadora
-                    </button>
-                ` : `
-                    <button class="w-full mt-5 py-3.5 rounded-xl font-bold text-slate-950 btn-gold active:scale-95 transition-all flex items-center justify-center gap-2 font-dwarf uppercase tracking-wider text-base ${jaFinalizouDia ? 'opacity-50 pointer-events-none' : ''}" onclick="finalizarDia('${jogadorAtual.id}')">
-                        <i class="fa-solid fa-person-walking-arrow-right text-slate-950"></i> ${jaFinalizouDia ? 'Já Saiu da Mina' : 'Fora da Mina'}
-                    </button>
-                `}
+                <button class="w-full mt-5 py-3.5 rounded-xl font-bold text-slate-950 btn-gold active:scale-95 transition-all flex items-center justify-center gap-2 font-dwarf uppercase tracking-wider text-base ${jaFinalizouDia ? 'opacity-50 pointer-events-none' : ''}" onclick="finalizarDia('${jogadorAtual.id}')">
+                    <i class="fa-solid fa-person-walking-arrow-right text-slate-950"></i> ${jaFinalizouDia ? 'Já Saiu da Mina' : 'Fora da Mina'}
+                </button>
             `;
             wrapper.appendChild(card);
             window.calcularTotal(jogadorAtual.id);
@@ -805,23 +1078,13 @@
                 }
             }
             
-            let bravura = 0;
-            let bravuraDetalhe = "";
-
-            if (modoBasico) {
-                bravura = jog.bravuraManual || 0;
-                if (bravura > 0) bravuraDetalhe = `+$${bravura} Bravura`;
-            } else {
-                const ordemSaida = jog.ordemSaidaPorDia[diaAtual] || (jogadores.filter(j => j.historicoPontos && j.historicoPontos[diaAtual - 1] !== undefined).length + 1);
-                const bravuraAuto = window.calcularBravuraAutomatica(ordemSaida, jogadores.length);
-                bravura = bravuraAuto + (jog.bravuraManual || 0);
-                if (bravura > 0) bravuraDetalhe = `+$${bravura} Bravura`;
-            }
+            const ordemSaida = jog.ordemSaidaPorDia[diaAtual] || (jogadores.filter(j => j.historicoPontos && j.historicoPontos[diaAtual - 1] !== undefined).length + 1);
+            const bravura = window.calcularBravuraAutomatica(ordemSaida, jogadores.length);
 
             let valorEspeciais = 0;
             let detalhesEspeciaisStr = [];
 
-            if (diaAtual === 5 || modoBasico) {
+            if (diaAtual === 5) {
                 const v2 = (jog.cartasValores.b2 || 0) * 2;
                 const v3 = (jog.cartasValores.b3 || 0) * 3;
                 const v4 = (jog.cartasValores.b4 || 0) * 4;
@@ -832,7 +1095,7 @@
                 if (v4 > 0) detalhesEspeciaisStr.push(`+$${v4} (Defesa)`);
             }
 
-            let valorExperiencia = ((diaAtual === 5 || modoBasico) && jog.fichaExpSelecionada) ? 3 : 0;
+            let valorExperiencia = (diaAtual === 5 && jog.fichaExpSelecionada) ? 3 : 0;
 
             const totalFinalCompleto = baseTotal + melhorBonusValor + bravura + valorEspeciais + valorExperiencia;
             
@@ -851,7 +1114,7 @@
             const displayBonusEl = document.getElementById(`display-bonus-linha-${id}`);
             if (displayBonusEl) {
                 let extrasStr = [];
-                if (bravuraDetalhe) extrasStr.push(bravuraDetalhe);
+                if (bravura > 0) extrasStr.push(`+$${bravura} Bravura (${ordemSaida}º a sair)`);
                 if (detalhesEspeciaisStr.length > 0) extrasStr.push(detalhesEspeciaisStr.join(', '));
                 if (valorExperiencia > 0) extrasStr.push(`+$${valorExperiencia} Exp`);
 
@@ -879,7 +1142,7 @@
         };
 
         window.finalizarDia = function(id) {
-            if (processandoFinalizacaoDia || modoBasico) return;
+            if (processandoFinalizacaoDia) return;
 
             const jog = jogadores.find(j => j.id === id);
             if (!jog) return;
@@ -890,7 +1153,7 @@
 
             const pontuacaoDia = window.calcularTotal(id);
             jog.historicoPontos[diaAtual - 1] = pontuacaoDia;
-            jog.historicoBravura[diaAtual - 1] = window.calcularBravuraAutomatica(jog.ordemSaidaPorDia[diaAtual], jogadores.length) + (jog.bravuraManual || 0);
+            jog.historicoBravura[diaAtual - 1] = window.calcularBravuraAutomatica(jog.ordemSaidaPorDia[diaAtual], jogadores.length);
 
             if (diaAtual === totalDias) {
                 const v2 = (jog.cartasValores.b2 || 0) * 2;
@@ -949,7 +1212,7 @@
             const tableHead = document.querySelector("#history-table thead tr");
             const tableBody = document.querySelector("#history-table tbody");
             
-            if (!tableHead || !tableBody || modoBasico) return;
+            if (!tableHead || !tableBody) return;
 
             tableHead.innerHTML = `<th class="py-3 px-4">Jogador</th>`;
             for(let i = 1; i <= totalDias; i++) {
@@ -1051,7 +1314,6 @@
             jogadores = [];
             jogadorAtivoId = null;
             processandoFinalizacaoDia = false;
-            modoBasico = false;
 
             document.getElementById('main-content').classList.add('hidden');
             document.getElementById('main-content').classList.remove('flex');
